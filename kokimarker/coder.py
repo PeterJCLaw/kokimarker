@@ -1,6 +1,8 @@
 """Routines for encoding/decoding a marker number into the grid of
 bits to be placed on a marker."""
 
+import pprint
+
 import CrcMoose
 import hamming
 import mapper
@@ -20,7 +22,12 @@ def add_crc(marker_num):
     marker_chr = chr(int((marker_num+1) % 256))
     crc = CRC12.calcString(marker_chr)
 
+    print("num: {0}, crc: {1}".format(marker_num, crc))
+
     code = (crc << 8) | marker_num
+
+    print("{0:x}".format(code))
+
     return code
 
 def code_to_lists(code):
@@ -43,14 +50,36 @@ def code_to_lists(code):
 
     return output
 
+def print_lists_as_hex(l):
+    for part in l:
+        total = 0
+        for i, val in enumerate(part):
+            total |= val << i
+
+        # At this point the value of 'total' should be equivalent to
+        # the value of a single element of the 'codes' array of arrays
+        # from the code_rotations function in code_grid.c
+        print("{0} (0x{0:x})".format(total))
+
 def encoded_lists(l):
     "Add hamming codes to all the items of the given list"
+
+    #pprint.pprint(l)
+    #print_lists_as_hex(l)
+
     return map(hamming.encode, l)
 
 def code_grid(code):
     "Return the grid for the given (mapped) code"
 
+    # code_to_lists returns a list of 5 groups of 4 bits
+    # encoded_lists adds hamming, resulting in 5 groups of 7 bits
     blocks = encoded_lists(code_to_lists(code))
+
+    pprint.pprint(blocks)
+    print_lists_as_hex(blocks)
+    #blocks = ['abcdefg', 'hijklmn', 'opqrstu', 'vwxyzAB', 'CDEFGHI']
+
     cell = 0
 
     grid = [[-1, -1, -1, -1, -1, -1],
@@ -60,6 +89,8 @@ def code_grid(code):
             [-1, -1, -1, -1, -1, -1],
             [-1, -1, -1, -1, -1, -1]]
 
+    # arrange the 35 bits into a square, striping diagonally top right
+    # to bottom left
     for i in range(7):
         for j in range(5):
             grid[cell / 6][cell % 6] = blocks[j][i]
